@@ -9,7 +9,7 @@
 
 (<sup>:email:</sup>) corresponding author, xgwang@hust.edu.cn
 
-accepted to CVPR 2025!
+Accepted to CVPR 2025!
 
 [![DiffusionDrive](https://img.shields.io/badge/Paper-DiffusionDrive-2b9348.svg?logo=arXiv)](https://arxiv.org/abs/2411.15139)&nbsp;
 [![huggingface weights](https://img.shields.io/badge/%F0%9F%A4%97%20Weights-DiffusionDrive-yellow)](https://huggingface.co/hustvl/DiffusionDrive)&nbsp;
