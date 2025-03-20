@@ -102,27 +102,30 @@ class V2TransfuserModel(nn.Module):
         batch_size = status_feature.shape[0]
 
         bev_feature_upscale, bev_feature, _ = self._backbone(camera_feature, lidar_feature)
+        # bev_feature_upscale B C H W
         cross_bev_feature = bev_feature_upscale
         bev_spatial_shape = bev_feature_upscale.shape[2:]
         concat_cross_bev_shape = bev_feature.shape[2:]
-        bev_feature = self._bev_downscale(bev_feature).flatten(-2, -1)
-        bev_feature = bev_feature.permute(0, 2, 1)
+        bev_feature = self._bev_downscale(bev_feature).flatten(-2, -1) # 下采样之后把空间维度展平
+        bev_feature = bev_feature.permute(0, 2, 1) # 把通道放到最后
         status_encoding = self._status_encoding(status_feature)
 
         keyval = torch.concatenate([bev_feature, status_encoding[:, None]], dim=1)
-        keyval += self._keyval_embedding.weight[None, ...]
+        keyval += self._keyval_embedding.weight[None, ...] # 前面增加一个维度是为了在batch size上广播加法
 
-        concat_cross_bev = keyval[:,:-1].permute(0,2,1).contiguous().view(batch_size, -1, concat_cross_bev_shape[0], concat_cross_bev_shape[1])
+        concat_cross_bev = keyval[:,:-1].permute(0,2,1).contiguous().view(batch_size, -1, concat_cross_bev_shape[0], concat_cross_bev_shape[1]) # 形状变回(B, C, H, W)
         # upsample to the same shape as bev_feature_upscale
 
-        concat_cross_bev = F.interpolate(concat_cross_bev, size=bev_spatial_shape, mode='bilinear', align_corners=False)
+        concat_cross_bev = F.interpolate(concat_cross_bev, size=bev_spatial_shape, mode='bilinear', align_corners=False) # 双线性上采样
         # concat concat_cross_bev and cross_bev_feature
-        cross_bev_feature = torch.cat([concat_cross_bev, cross_bev_feature], dim=1)
+        cross_bev_feature = torch.cat([concat_cross_bev, cross_bev_feature], dim=1) # 融合基于 keyval 计算得到的 BEV 特征与原始 cross_bev_feature，得到最终的 cross_bev_feature。
 
+        # 再做一次cross_bev_feature的变换，增加表达能力
         cross_bev_feature = self.bev_proj(cross_bev_feature.flatten(-2,-1).permute(0,2,1))
         cross_bev_feature = cross_bev_feature.permute(0,2,1).contiguous().view(batch_size, -1, bev_spatial_shape[0], bev_spatial_shape[1])
-        query = self._query_embedding.weight[None, ...].repeat(batch_size, 1, 1)
-        query_out = self._tf_decoder(query, keyval)
+        # self._query_embedding.weight (N_query, C)
+        query = self._query_embedding.weight[None, ...].repeat(batch_size, 1, 1) # (B, N_query, C)
+        query_out = self._tf_decoder(query, keyval) # (B, N_query, C)
 
         bev_semantic_map = self._bev_semantic_head(bev_feature_upscale)
         trajectory_query, agents_query = query_out.split(self._query_splits, dim=1)
