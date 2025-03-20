@@ -409,10 +409,11 @@ class TrajectoryHead(nn.Module):
 
         plan_anchor = np.load(plan_anchor_path)
 
+        # 不可训练的参数 self.plan_anchor
         self.plan_anchor = nn.Parameter(
             torch.tensor(plan_anchor, dtype=torch.float32),
             requires_grad=False,
-        ) # 20,8,2
+        ) # 20,8,2 时间步 模态数 xy
         self.plan_anchor_encoder = nn.Sequential(
             *linear_relu_ln(d_model, 1, 1,512),
             nn.Linear(d_model, d_model),
