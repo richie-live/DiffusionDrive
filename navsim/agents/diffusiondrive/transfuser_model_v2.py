@@ -413,7 +413,7 @@ class TrajectoryHead(nn.Module):
         self.plan_anchor = nn.Parameter(
             torch.tensor(plan_anchor, dtype=torch.float32),
             requires_grad=False,
-        ) # 20,8,2 时间步 模态数 xy
+        ) # 20,8,2 模态数 时间步 xy
         self.plan_anchor_encoder = nn.Sequential(
             *linear_relu_ln(d_model, 1, 1,512),
             nn.Linear(d_model, d_model),
@@ -482,12 +482,12 @@ class TrajectoryHead(nn.Module):
         ego_fut_mode = noisy_traj_points.shape[1]
         # 2. proj noisy_traj_points to the query
         traj_pos_embed = gen_sineembed_for_position(noisy_traj_points,hidden_dim=64)
-        traj_pos_embed = traj_pos_embed.flatten(-2)
+        traj_pos_embed = traj_pos_embed.flatten(-2) # 合并后面两个维度，时间和状态xy
         traj_feature = self.plan_anchor_encoder(traj_pos_embed)
         traj_feature = traj_feature.view(bs,ego_fut_mode,-1)
         # 3. embed the timesteps
         time_embed = self.time_mlp(timesteps)
-        time_embed = time_embed.view(bs,1,-1)
+        time_embed = time_embed.view(bs,1,-1) # 增加模式维度，用于广播
 
 
         # 4. begin the stacked decoder
